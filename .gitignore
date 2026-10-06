@@ -7,6 +7,8 @@ yarn-error.log*
 
 # Dependency directories
 node_modules/
+.pnpm-store/
+.corepack/
 vendor/
 
 # Build output
