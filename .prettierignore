@@ -1,0 +1,7 @@
+node_modules/
+.corepack/
+.pnpm-store/
+dist/
+build/
+coverage/
+pnpm-lock.yaml

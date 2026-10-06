@@ -1,0 +1,27 @@
+{
+  "name": "nous-oska",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 0 foundation for the Nous desktop browser project",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "scripts": {
+    "lint": "eslint . && prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.4",
+    "eslint": "^10.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  }
+}

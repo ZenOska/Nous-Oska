@@ -1,66 +1,79 @@
-# Project Name
+# Nous
 
-> A short, one-line description of your project.
+> A modern, open-source desktop web browser designed around speed, privacy, customization, and extensibility.
 
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-Apache2.0-red.svg)](LICENSE)
-
-## Table of Contents
-
-- [About](#about)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+[![CI](https://github.com/ZenOska/Nous-Oska/actions/workflows/ci.yml/badge.svg)](https://github.com/ZenOska/Nous-Oska/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 ## About
 
-Describe your project in a few sentences. What problem does it solve? Why was it built?
+Nous is the browser application around an existing, mature web engine. We are not building a rendering engine. The initial desktop application will use Electron and Chromium, with a React and TypeScript interface.
+
+## Vision
+
+Nous aims to make a fast, private, customizable, and extensible desktop browsing experience. Privacy and security are architectural requirements from the start, especially when handling untrusted websites.
+
+## Features
+
+Nous is in Phase 0: foundation and architecture. Browser features are planned, not implemented yet. See the [roadmap](docs/roadmap/roadmap.md).
+
+## Architecture
+
+The planned application separates privileged native work from the web-facing user interface:
+
+```text
+Nous
+├── Electron main process  Windows, sessions, downloads, security
+├── Preload                Small, validated API bridge
+└── Renderer               React UI: toolbar, tabs, settings
+          │
+         IPC
+          │
+       Chromium ── Internet
+```
+
+The main process owns privileged operations. The preload exposes only deliberate, validated capabilities. The renderer contains the React interface. Read [the architecture overview](docs/architecture/overview.md) and [security principles](docs/architecture/security.md).
+
+## Technology
+
+| Area                                 | Choice                |
+| ------------------------------------ | --------------------- |
+| Desktop framework and browser engine | Electron and Chromium |
+| Frontend and language                | React and TypeScript  |
+| UI styling and build                 | Tailwind CSS and Vite |
+| Package manager and state            | pnpm and Zustand      |
+| Unit and end-to-end testing          | Vitest and Playwright |
+| Linting and formatting               | ESLint and Prettier   |
+| CI                                   | GitHub Actions        |
+
+The Phase 0 TypeScript tooling and CI are configured. The Electron + Vite + React application will be initialized together in Phase 1; this repository is not yet a runnable browser.
 
 ## Getting Started
 
-### Prerequisites
-
-List any software or tools required before installing the project.
-
-```
-Example: Node.js >= 18, Python >= 3.10
-```
-
-### Installation
-
-Step-by-step instructions to set up the project locally.
+There is no browser application to launch yet. To install the repository tooling, clone the repository and read the [development setup](docs/development/setup.md).
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
-
-# Install dependencies
-# (replace with your package manager command)
+git clone https://github.com/ZenOska/Nous-Oska.git
+cd Nous-Oska
+corepack pnpm install
 ```
 
-## Usage
+## Development
 
-Show examples of how to use the project after installation.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [development guide](docs/development/setup.md) for branch naming, commits, reviews, and the planned toolchain.
 
-```bash
-# Example command
-```
+## Roadmap
+
+See [the Nous roadmap](docs/roadmap/roadmap.md) for phases 0–9.
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
+Issues and pull requests are welcome. Please follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+Please report vulnerabilities privately using GitHub's Security Advisories for this repository when enabled. See [SECURITY.md](SECURITY.md) for the policy and planned Electron security boundaries.
 
 ## License
 
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-Your Name – [@your_twitter](https://twitter.com/your_twitter) – your.email@example.com
-
-Project Link: [https://github.com/your-username/your-repo](https://github.com/your-username/your-repo)
+Nous is licensed under the [Apache License 2.0](LICENSE).
