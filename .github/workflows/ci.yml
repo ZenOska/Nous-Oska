@@ -1,27 +1,36 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+  push:
+    branches: [main, develop]
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  quality:
+    name: Lint, type-check, test, and build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up environment
-        run: echo "Add your setup steps here (e.g. install Node.js, Python, etc.)"
-
+      - uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
       - name: Install dependencies
-        run: echo "Add your dependency installation command here"
-
-      - name: Run tests
-        run: echo "Add your test command here"
+        run: pnpm install --frozen-lockfile
+      - name: Lint and format check
+        run: pnpm lint
+      - name: Type-check
+        run: pnpm typecheck
+      - name: Tests
+        run: pnpm test
+      - name: Build
+        run: pnpm build
