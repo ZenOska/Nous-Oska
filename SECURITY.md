@@ -1,30 +1,15 @@
 # Security Policy
 
-## Supported Versions
+## Project status
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | :white_check_mark: |
+Nous is in Phase 0 and does not yet ship an application. Security principles for the planned Electron application are documented in [the security architecture](docs/architecture/security.md).
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+Please do not report security vulnerabilities in public issues. Use GitHub's private vulnerability reporting / Security Advisories for this repository if enabled. If private reporting is unavailable, contact a repository maintainer privately through the contact channel listed on the GitHub organization profile. Do not include exploit details in a public post while arranging private contact.
 
-To report a security vulnerability, please email **security@example.com** with:
+We will acknowledge reports as soon as practicable and coordinate a fix and disclosure with the reporter. A response-time commitment will be published once the project has an active security response team.
 
-- A description of the vulnerability
-- Steps to reproduce the issue
-- Potential impact of the vulnerability
-- Any suggested mitigations (optional)
+## Supported versions
 
-You should receive a response within **48 hours**. If you do not, please follow up to ensure the original message was received.
-
-After the initial reply, the security team will keep you informed about the progress toward a fix and a full announcement. We may ask for additional information or guidance.
-
-## Disclosure Policy
-
-Once a vulnerability is confirmed and a fix is ready, we will:
-
-1. Prepare a fix and release it as quickly as possible.
-2. Notify you so you can update as soon as the patch is available.
-3. Publish a security advisory in this repository.
+There are no released application versions yet. Once releases begin, supported versions will be listed here.

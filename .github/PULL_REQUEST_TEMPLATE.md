@@ -1,31 +1,25 @@
-## Description
+## Summary
 
-Please include a summary of the change and which issue it fixes.
+Describe the change and why it is needed.
 
-Fixes # (issue)
+## Related issue
 
-## Type of Change
+Closes #
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Refactoring (no functional changes)
+## Change type
 
-## How Has This Been Tested?
+- [ ] Feature
+- [ ] Bug fix
+- [ ] Documentation
+- [ ] Refactor / maintenance
 
-Please describe the tests that you ran to verify your changes.
+## Validation
 
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Manual testing
+List the checks performed and their results. If no automated checks apply, explain how the change was reviewed.
 
 ## Checklist
 
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code where necessary
-- [ ] I have updated the documentation accordingly
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix/feature works
-- [ ] All new and existing tests pass
+- [ ] This pull request targets `develop` (release pull requests target `main`).
+- [ ] The change is focused and follows the project conventions.
+- [ ] Relevant documentation and tests are updated.
+- [ ] I have not included secrets or unrelated changes.
