@@ -15,6 +15,9 @@ vendor/
 dist/
 build/
 out/
+release/
+*.tsbuildinfo
+
 *.egg-info/
 __pycache__/
 *.pyc
