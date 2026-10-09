@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+    />
+    <title>Nous Browser</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="toolbar" id="toolbar">
+        <div class="window-controls" id="window-controls">
+          <button class="window-control minimize" id="minimize-btn" title="Minimize">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <rect x="1" y="5" width="10" height="2" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+          <button class="window-control maximize" id="maximize-btn" title="Maximize">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <rect
+                x="1"
+                y="1"
+                width="10"
+                height="10"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+            </svg>
+          </button>
+          <button class="window-control close" id="close-btn" title="Close">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M3 3L9 9M9 3L3 9"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="toolbar-center">
+          <div class="tab-bar" id="tab-bar">
+            <button class="tab active" data-tab-id="1">
+              <span class="tab-favicon"></span>
+              <span class="tab-title">New Tab</span>
+              <button class="tab-close" title="Close tab">×</button>
+            </button>
+            <button class="new-tab-btn" id="new-tab-btn" title="New tab">+</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <div class="url-bar-container">
+            <div
+              class="url-bar"
+              id="url-bar"
+              contenteditable="true"
+              spellcheck="false"
+              role="textbox"
+              aria-label="Address bar"
+            ></div>
+            <button class="url-bar-action" id="refresh-btn" title="Refresh">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M23 4v6h-6" />
+                <path d="M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+              </svg>
+            </button>
+          </div>
+          <button class="toolbar-btn" id="menu-btn" title="Menu">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="1" />
+              <circle cx="19" cy="12" r="1" />
+              <circle cx="5" cy="12" r="1" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <main class="content" id="content">
+        <div class="new-tab-page" id="new-tab-page">
+          <div class="brand">
+            <svg class="logo" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="64" cy="64" r="60" stroke="currentColor" stroke-width="8" />
+              <path
+                d="M64 24L44 56M64 24L84 56M44 56L84 56"
+                stroke="currentColor"
+                stroke-width="8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <h1>Nous</h1>
+            <p class="tagline">A modern, privacy-focused browser</p>
+          </div>
+          <div class="search-box">
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Search or enter address"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="quick-links" id="quick-links"></div>
+        </div>
+        <webview
+          id="webview"
+          class="webview"
+          src="about:blank"
+          partition="persist:nous"
+          style="display: none"
+        ></webview>
+      </main>
+    </div>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>
