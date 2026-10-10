@@ -60,22 +60,18 @@ class BrowserApp {
   }
 
   private initWindowControls(): void {
-    this.closeBtn.addEventListener('click', () => window.close?.());
-    this.minimizeBtn.addEventListener('click', () =>
-      window.electronAPI?.shell.openExternal('electron://minimize'),
-    );
-    this.maximizeBtn.addEventListener('click', () =>
-      window.electronAPI?.shell.openExternal('electron://maximize'),
-    );
-
-    if (window.electronAPI) {
+    if (window.electronAPI?.window) {
+      this.closeBtn.addEventListener('click', () => {
+        window.electronAPI.window.close();
+      });
       this.minimizeBtn.addEventListener('click', () => {
-        window.electronAPI.shell.openExternal('electron://minimize');
+        window.electronAPI.window.minimize();
       });
       this.maximizeBtn.addEventListener('click', () => {
-        window.electronAPI.shell.openExternal('electron://maximize');
+        window.electronAPI.window.toggleMaximize();
       });
     } else {
+      this.closeBtn.addEventListener('click', () => window.close?.());
       this.minimizeBtn.style.display = 'none';
       this.maximizeBtn.style.display = 'none';
     }
