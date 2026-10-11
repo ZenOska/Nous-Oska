@@ -1,58 +1,20 @@
-import { app, BrowserWindow, ipcMain, shell, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'node:path';
 import * as url from 'node:url';
+import { BrowserWindowManager } from './window/index.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === 'development';
 
-let mainWindow: BrowserWindow | null = null;
+export const windowManager = new BrowserWindowManager({
+  preloadPath: path.join(__dirname, '../preload/index.js'),
+  prodIndexPath: path.join(__dirname, '../renderer/index.html'),
+  isDev,
+  devServerUrl: 'http://localhost:5173',
+});
 
-function createMainWindow(): BrowserWindow {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-
-  mainWindow = new BrowserWindow({
-    width: Math.min(1400, width),
-    height: Math.min(900, height),
-    minWidth: 800,
-    minHeight: 600,
-    show: false,
-    titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 15, y: 15 },
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false,
-    },
-  });
-
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-  }
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-    if (isDev) {
-      mainWindow?.focus();
-    }
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  mainWindow.webContents.setWindowOpenHandler(({ url: requestedUrl }) => {
-    shell.openExternal(requestedUrl);
-    return { action: 'deny' };
-  });
-
-  return mainWindow;
+export function createMainWindow(): BrowserWindow {
+  return windowManager.createWindow();
 }
 
 app.on('window-all-closed', () => {
@@ -68,21 +30,19 @@ app.on('activate', () => {
 });
 
 app.whenReady().then(() => {
+  windowManager.registerIpcHandlers();
   createMainWindow();
 
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    windowManager.focus();
   });
 });
 
 ipcMain.handle('app:getVersion', () => app.getVersion());
 ipcMain.handle('app:getName', () => app.getName());
 ipcMain.handle('platform:get', () => process.platform);
-ipcMain.handle('shell:openExternal', async (_event, url: string) => {
-  await shell.openExternal(url);
+ipcMain.handle('shell:openExternal', async (_event, targetUrl: string) => {
+  await shell.openExternal(targetUrl);
 });
 
 if (!app.requestSingleInstanceLock()) {
