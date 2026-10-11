@@ -13,6 +13,5 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["tests/**/*.ts"],
-  "references": [{ "path": "./tsconfig.main.json" }, { "path": "./tsconfig.preload.json" }]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }
