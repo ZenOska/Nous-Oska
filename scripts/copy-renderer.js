@@ -26,6 +26,9 @@ function copyRecursive(src, dest) {
     if (entry.isDirectory()) {
       copyRecursive(srcPath, destPath);
     } else {
+      if (entry.name.endsWith('.ts')) {
+        continue;
+      }
       fs.copyFileSync(srcPath, destPath);
     }
   }

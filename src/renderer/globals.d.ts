@@ -1,4 +1,4 @@
-interface WindowState {
+export interface WindowState {
   isMaximized: boolean;
   isMinimized: boolean;
   isFocused: boolean;
@@ -11,7 +11,7 @@ interface WindowState {
   };
 }
 
-interface ElectronAPI {
+export interface ElectronAPI {
   app: {
     getVersion: () => Promise<string>;
     getName: () => Promise<string>;
