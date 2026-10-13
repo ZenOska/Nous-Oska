@@ -17,6 +17,7 @@ The Navigation Pipeline coordinates destination URL validation, WebContents requ
 - **Error Page HTML Generation**: $O(U)$ where $U$ is the length of the diagnostic message and failed URL (single-pass HTML escaping and template interpolation).
 - **Lifecycle Event Dispatch**: $O(S)$ where $S$ is the number of subscribed listeners across IPC channels.
 - **State Query (`getState`)**: $O(1)$ constant time shallow copy.
+- **Session History Traversal (`goBack`)**: $O(1)$ constant time history pop and capability toggle (see [history.md](file:///c:/Users/USER/Desktop/Extras/ZenOska/nous-oska/docs/components/history.md)).
 
 ## Architecture
 

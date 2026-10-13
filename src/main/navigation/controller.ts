@@ -1,6 +1,12 @@
 import { ipcMain, type WebContents } from 'electron';
 import { generateNetErrorDataUrl } from './error-page.js';
-import type { NavigationRequest, NavigationStateChange } from './types.js';
+import { NavigationHistoryTracker } from './history.js';
+import type {
+  NavigationCapabilities,
+  NavigationHistoryAction,
+  NavigationRequest,
+  NavigationStateChange,
+} from './types.js';
 import { validateNavigationUrl } from './validator.js';
 
 export const CHROMIUM_ERR_ABORTED = -3;
@@ -16,17 +22,21 @@ export interface IpcMainHandler {
 export interface NavigationControllerOptions {
   getWebContents: () => WebContents | null;
   onStateChange?: (state: NavigationStateChange) => void;
+  onCapabilitiesChange?: (capabilities: NavigationCapabilities) => void;
   customIpcMain?: IpcMainHandler;
+  historyTracker?: NavigationHistoryTracker;
 }
 
 /**
  * Orchestrates main-process URL navigation, WebContents lifecycle events,
- * and error page interception for the Nous browser shell.
+ * history traversal, and error page interception for the Nous browser shell.
  */
 export class NavigationController {
   private readonly getWebContents: () => WebContents | null;
   private readonly onStateChange?: (state: NavigationStateChange) => void;
+  private readonly onCapabilitiesChange?: (capabilities: NavigationCapabilities) => void;
   private readonly ipc: IpcMainHandler;
+  private readonly historyTracker: NavigationHistoryTracker;
 
   private activeWebContents: WebContents | null = null;
   private detachLifecycleListeners: (() => void) | null = null;
@@ -42,7 +52,9 @@ export class NavigationController {
   constructor(options: NavigationControllerOptions) {
     this.getWebContents = options.getWebContents;
     this.onStateChange = options.onStateChange;
+    this.onCapabilitiesChange = options.onCapabilitiesChange;
     this.ipc = options.customIpcMain ?? ipcMain;
+    this.historyTracker = options.historyTracker ?? new NavigationHistoryTracker();
   }
 
   /**
@@ -79,6 +91,25 @@ export class NavigationController {
         errorDescription: undefined,
       };
       this.emitStateChange();
+      this.emitCapabilities();
+    };
+
+    const handleDidNavigate = (_event: unknown, url: string) => {
+      this.currentState = {
+        ...this.currentState,
+        url: url || this.currentState.url,
+      };
+      this.emitStateChange();
+      this.emitCapabilities();
+    };
+
+    const handleDidNavigateInPage = (_event: unknown, url: string) => {
+      this.currentState = {
+        ...this.currentState,
+        url: url || this.currentState.url,
+      };
+      this.emitStateChange();
+      this.emitCapabilities();
     };
 
     const handlePageTitleUpdated = (_event: unknown, title: string) => {
@@ -113,6 +144,7 @@ export class NavigationController {
         errorDescription,
       };
       this.emitStateChange();
+      this.emitCapabilities();
 
       if (this.activeWebContents && !this.activeWebContents.isDestroyed()) {
         // Load styled error page without throwing raw crash alerts
@@ -124,6 +156,11 @@ export class NavigationController {
 
     webContents.on('did-start-loading', handleDidStartLoading);
     webContents.on('did-finish-load', handleDidFinishLoad);
+    webContents.on('did-navigate', handleDidNavigate as unknown as (...args: unknown[]) => void);
+    webContents.on(
+      'did-navigate-in-page',
+      handleDidNavigateInPage as unknown as (...args: unknown[]) => void,
+    );
     webContents.on(
       'page-title-updated',
       handlePageTitleUpdated as unknown as (...args: unknown[]) => void,
@@ -134,6 +171,14 @@ export class NavigationController {
       if (!webContents.isDestroyed()) {
         webContents.removeListener('did-start-loading', handleDidStartLoading);
         webContents.removeListener('did-finish-load', handleDidFinishLoad);
+        webContents.removeListener(
+          'did-navigate',
+          handleDidNavigate as unknown as (...args: unknown[]) => void,
+        );
+        webContents.removeListener(
+          'did-navigate-in-page',
+          handleDidNavigateInPage as unknown as (...args: unknown[]) => void,
+        );
         webContents.removeListener(
           'page-title-updated',
           handlePageTitleUpdated as unknown as (...args: unknown[]) => void,
@@ -188,12 +233,60 @@ export class NavigationController {
     this.emitStateChange();
 
     await webContents.loadURL(validatedUrl);
+    this.emitCapabilities();
+  }
+
+  /**
+   * Navigates back in the session history stack for the active WebContents.
+   *
+   * @param action Optional history action payload.
+   * @returns Boolean indicating whether navigation was performed.
+   */
+  public goBack(action?: NavigationHistoryAction): boolean {
+    let webContents = this.activeWebContents;
+    if (!webContents || webContents.isDestroyed()) {
+      webContents = this.getWebContents();
+      if (webContents && !webContents.isDestroyed()) {
+        this.attachWebContents(webContents);
+      }
+    }
+
+    if (!webContents || webContents.isDestroyed()) {
+      return false;
+    }
+
+    const executed = this.historyTracker.goBack(webContents);
+    if (executed) {
+      if (action?.tabId) {
+        this.currentState.tabId = action.tabId;
+      }
+      this.emitCapabilities();
+    }
+    return executed;
+  }
+
+  /**
+   * Queries the current navigation capabilities for the active WebContents.
+   *
+   * @param tabId Optional tab identifier.
+   * @returns NavigationCapabilities snapshot.
+   */
+  public getCapabilities(tabId?: string): NavigationCapabilities {
+    void tabId;
+    let webContents = this.activeWebContents;
+    if (!webContents || webContents.isDestroyed()) {
+      webContents = this.getWebContents();
+      if (webContents && !webContents.isDestroyed()) {
+        this.attachWebContents(webContents);
+      }
+    }
+    return this.historyTracker.getCapabilities(webContents);
   }
 
   /**
    * Queries the current navigation state snapshot.
    *
-   * @param _tabId Optional tab identifier (defaults to active tab).
+   * @param tabId Optional tab identifier (defaults to active tab).
    * @returns Current NavigationStateChange snapshot.
    */
   public getState(tabId?: string): NavigationStateChange {
@@ -221,6 +314,16 @@ export class NavigationController {
       return this.getState(tabId);
     });
 
+    this.ipc.handle('navigation:goBack', async (_event, ...args: unknown[]) => {
+      const action = args[0] as NavigationHistoryAction | undefined;
+      return this.goBack(action);
+    });
+
+    this.ipc.handle('navigation:getCapabilities', async (_event, ...args: unknown[]) => {
+      const tabId = typeof args[0] === 'string' ? args[0] : undefined;
+      return this.getCapabilities(tabId);
+    });
+
     this.isIpcRegistered = true;
   }
 
@@ -234,6 +337,8 @@ export class NavigationController {
 
     this.ipc.removeHandler('navigation:loadUrl');
     this.ipc.removeHandler('navigation:getState');
+    this.ipc.removeHandler('navigation:goBack');
+    this.ipc.removeHandler('navigation:getCapabilities');
 
     this.isIpcRegistered = false;
   }
@@ -251,6 +356,23 @@ export class NavigationController {
 
     if (webContents && !webContents.isDestroyed()) {
       webContents.send('navigation:stateChange', this.currentState);
+    }
+  }
+
+  /**
+   * Emits the current navigation capabilities to registered callbacks and renderer IPC.
+   */
+  private emitCapabilities(): void {
+    const capabilities = this.getCapabilities();
+    this.onCapabilitiesChange?.(capabilities);
+
+    let webContents = this.activeWebContents;
+    if (!webContents || webContents.isDestroyed()) {
+      webContents = this.getWebContents();
+    }
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('navigation:capabilities', capabilities);
     }
   }
 

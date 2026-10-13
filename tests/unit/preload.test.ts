@@ -79,6 +79,10 @@ describe('Preload Bridge & Validation', () => {
               url: 'https://example.com',
               title: 'Example',
             });
+          case 'navigation:goBack':
+            return Promise.resolve(true);
+          case 'navigation:getCapabilities':
+            return Promise.resolve({ canGoBack: true, canGoForward: false });
           default:
             return Promise.resolve(undefined);
         }
@@ -180,6 +184,23 @@ describe('Preload Bridge & Validation', () => {
       unsubscribe();
       expect(mockIpc.removeListener).toHaveBeenCalledWith(
         'navigation:stateChange',
+        expect.any(Function),
+      );
+
+      const goBackResult = await api.navigation.goBack({ tabId: '1' });
+      expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:goBack', { tabId: '1' });
+      expect(goBackResult).toBe(true);
+
+      const caps = await api.navigation.getCapabilities('1');
+      expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:getCapabilities', '1');
+      expect(caps).toEqual({ canGoBack: true, canGoForward: false });
+
+      const capsCb = vi.fn();
+      const unsubCaps = api.navigation.onCapabilitiesChange(capsCb);
+      expect(mockIpc.on).toHaveBeenCalledWith('navigation:capabilities', expect.any(Function));
+      unsubCaps();
+      expect(mockIpc.removeListener).toHaveBeenCalledWith(
+        'navigation:capabilities',
         expect.any(Function),
       );
     });

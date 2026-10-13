@@ -336,6 +336,13 @@ body {
   }
 }
 
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
 .toolbar-btn {
   display: flex;
   align-items: center;
@@ -349,13 +356,22 @@ body {
   cursor: pointer;
   transition:
     background var(--transition-fast),
-    color var(--transition-fast);
+    color var(--transition-fast),
+    opacity var(--transition-fast);
   -webkit-app-region: no-drag;
 }
 
-.toolbar-btn:hover {
+.toolbar-btn:hover:not(:disabled):not(.disabled) {
   background: var(--bg-tertiary);
   color: var(--fg-primary);
+}
+
+.toolbar-btn:disabled,
+.toolbar-btn[disabled],
+.toolbar-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .content {

@@ -1,6 +1,8 @@
 import type { IpcRenderer } from 'electron';
 import type {
   ElectronAPI,
+  NavigationCapabilities,
+  NavigationHistoryAction,
   NavigationRequest,
   NavigationStateChange,
   WindowState,
@@ -79,6 +81,19 @@ export function createElectronAPI(ipc: IpcBridge): ElectronAPI {
         ipc.on?.('navigation:stateChange', listener);
         return () => {
           ipc.removeListener?.('navigation:stateChange', listener);
+        };
+      },
+      goBack: (action?: NavigationHistoryAction) =>
+        ipc.invoke('navigation:goBack', action) as Promise<boolean>,
+      getCapabilities: (tabId?: string) =>
+        ipc.invoke('navigation:getCapabilities', tabId) as Promise<NavigationCapabilities>,
+      onCapabilitiesChange: (callback: (capabilities: NavigationCapabilities) => void) => {
+        const listener = (_event: unknown, ...args: unknown[]) => {
+          callback(args[0] as NavigationCapabilities);
+        };
+        ipc.on?.('navigation:capabilities', listener);
+        return () => {
+          ipc.removeListener?.('navigation:capabilities', listener);
         };
       },
     }),

@@ -38,6 +38,9 @@ describe('RendererIpcClient', () => {
         title: 'Example',
       }),
       onStateChange: vi.fn().mockReturnValue(() => undefined),
+      goBack: vi.fn().mockResolvedValue(true),
+      getCapabilities: vi.fn().mockResolvedValue({ canGoBack: true, canGoForward: false }),
+      onCapabilitiesChange: vi.fn().mockReturnValue(() => undefined),
     },
   });
 
@@ -120,5 +123,17 @@ describe('RendererIpcClient', () => {
     const cb = vi.fn();
     client.onNavigationStateChange(cb);
     expect(mockApi.navigation.onStateChange).toHaveBeenCalledWith(cb);
+
+    const backResult = await client.goBack('1');
+    expect(mockApi.navigation.goBack).toHaveBeenCalledWith({ tabId: '1' });
+    expect(backResult).toBe(true);
+
+    const caps = await client.getNavigationCapabilities('1');
+    expect(mockApi.navigation.getCapabilities).toHaveBeenCalledWith('1');
+    expect(caps).toEqual({ canGoBack: true, canGoForward: false });
+
+    const capsCb = vi.fn();
+    client.onCapabilitiesChange(capsCb);
+    expect(mockApi.navigation.onCapabilitiesChange).toHaveBeenCalledWith(capsCb);
   });
 });
