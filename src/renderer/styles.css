@@ -227,22 +227,63 @@ body {
 .url-bar-container {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex: 1;
   max-width: 600px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 8px 0 10px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   transition:
     border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
   -webkit-app-region: no-drag;
 }
 
-.url-bar-container:focus-within {
+.url-bar-container:focus-within,
+.url-bar-container.is-editing {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-dim);
+  background: var(--bg-secondary);
+}
+
+.url-bar-container.invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.security-badge.status-secure {
+  color: var(--success);
+}
+
+.security-badge.status-insecure {
+  color: var(--warning);
+}
+
+.security-badge.status-invalid {
+  color: var(--danger);
+}
+
+.security-badge.status-search {
+  color: var(--accent);
+}
+
+.security-badge.status-internal {
+  color: var(--fg-secondary);
 }
 
 .url-bar {

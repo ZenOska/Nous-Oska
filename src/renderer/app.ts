@@ -1,3 +1,4 @@
+import { AddressBar } from './address-bar/index.js';
 import { RendererIpcClient } from './ipc/index.js';
 import { auditRendererContext, sanitizeNavigationUrl } from './security/index.js';
 import { TabManager } from './tabs/index.js';
@@ -8,6 +9,7 @@ export class BrowserApp {
   public readonly ipcClient: RendererIpcClient;
   public readonly tabManager: TabManager;
   public readonly windowControls: WindowControls;
+  public readonly addressBar: AddressBar;
 
   private readonly iframes: Map<number, HTMLIFrameElement> = new Map();
 
@@ -23,7 +25,7 @@ export class BrowserApp {
   private readonly newTabPage = document.getElementById('new-tab-page');
   private readonly content = document.getElementById('content');
 
-  constructor(ipcClient?: RendererIpcClient, tabManager?: TabManager) {
+  constructor(ipcClient?: RendererIpcClient, tabManager?: TabManager, addressBar?: AddressBar) {
     this.ipcClient = ipcClient ?? new RendererIpcClient();
     this.tabManager = tabManager ?? new TabManager();
 
@@ -35,6 +37,20 @@ export class BrowserApp {
       },
       this.ipcClient,
     );
+
+    const urlBarContainer = document.getElementById('url-bar-container');
+    const securityBadge = document.getElementById('security-badge');
+
+    this.addressBar =
+      addressBar ??
+      new AddressBar({
+        elements: {
+          container: urlBarContainer,
+          input: this.urlBar,
+          refreshBtn: this.refreshBtn,
+          securityBadge,
+        },
+      });
 
     this.runSecurityCheck();
     this.windowControls.init();
@@ -95,30 +111,12 @@ export class BrowserApp {
       this.tabManager.createTab();
     });
 
-    this.refreshBtn?.addEventListener('click', () => {
+    this.addressBar.onNavigate((navEvent) => {
+      this.navigateActiveTab(navEvent.url);
+    });
+
+    this.addressBar.onRefresh(() => {
       this.reloadActiveTab();
-    });
-
-    this.urlBar?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const raw = this.urlBar?.textContent?.trim() || '';
-        if (raw) {
-          try {
-            const sanitized = sanitizeNavigationUrl(raw);
-            this.navigateActiveTab(sanitized);
-          } catch (err) {
-            console.error('Invalid URL navigation rejected:', err);
-          }
-        }
-      } else if (e.key === 'Escape') {
-        this.urlBar?.blur();
-        this.updateUrlBar();
-      }
-    });
-
-    this.urlBar?.addEventListener('blur', () => {
-      this.updateUrlBar();
     });
 
     this.searchInput?.addEventListener('keydown', (e) => {
@@ -151,7 +149,7 @@ export class BrowserApp {
     }
     if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
       e.preventDefault();
-      this.focusUrlBar();
+      this.addressBar.focus();
     }
   }
 
@@ -234,7 +232,7 @@ export class BrowserApp {
       this.newTabPage.style.display = hasActiveIframe ? 'none' : 'flex';
     }
 
-    this.updateUrlBar();
+    this.addressBar.setUrl(activeTab.url);
     this.updateWindowTitle();
   }
 
@@ -268,7 +266,7 @@ export class BrowserApp {
           // ignore
         }
       }
-      this.updateUrlBar();
+      this.addressBar.setUrl(tab.url);
     });
 
     this.content.appendChild(iframe);
@@ -291,7 +289,7 @@ export class BrowserApp {
     if (this.newTabPage) {
       this.newTabPage.style.display = 'none';
     }
-    this.updateUrlBar();
+    this.addressBar.setUrl(url);
   }
 
   private reloadActiveTab(): void {
@@ -305,24 +303,6 @@ export class BrowserApp {
       } catch {
         iframe.src = activeTab.url;
       }
-    }
-  }
-
-  private updateUrlBar(): void {
-    const activeTab = this.tabManager.getActiveTab();
-    if (!this.urlBar || !activeTab) return;
-
-    if (document.activeElement !== this.urlBar) {
-      this.urlBar.textContent = activeTab.url === 'about:blank' ? '' : activeTab.url;
-    }
-  }
-
-  private focusUrlBar(): void {
-    if (!this.urlBar) return;
-    this.urlBar.focus();
-    const activeTab = this.tabManager.getActiveTab();
-    if (activeTab && activeTab.url !== 'about:blank') {
-      this.urlBar.textContent = activeTab.url;
     }
   }
 
