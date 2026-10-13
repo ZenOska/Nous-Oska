@@ -11,6 +11,20 @@ export interface WindowState {
   };
 }
 
+export interface NavigationRequest {
+  tabId: string;
+  url: string;
+}
+
+export interface NavigationStateChange {
+  tabId: string;
+  isLoading: boolean;
+  url: string;
+  title: string;
+  errorCode?: number;
+  errorDescription?: string;
+}
+
 export interface ElectronAPI {
   app: {
     getVersion: () => Promise<string>;
@@ -30,6 +44,11 @@ export interface ElectronAPI {
     close: () => Promise<void>;
     isMaximized: () => Promise<boolean>;
     getState: () => Promise<WindowState | null>;
+  };
+  navigation: {
+    loadUrl: (request: NavigationRequest) => Promise<void>;
+    getState: (tabId?: string) => Promise<NavigationStateChange | null>;
+    onStateChange: (callback: (state: NavigationStateChange) => void) => () => void;
   };
 }
 

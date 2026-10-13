@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createElectronAPI, validateExternalUrl } from '../../src/preload/api.js';
+import {
+  createElectronAPI,
+  validateExternalUrl,
+  validateNavigationRequest,
+} from '../../src/preload/api.js';
 
 describe('Preload Bridge & Validation', () => {
   describe('validateExternalUrl', () => {
@@ -27,6 +31,35 @@ describe('Preload Bridge & Validation', () => {
     });
   });
 
+  describe('validateNavigationRequest', () => {
+    it('accepts valid navigation request objects', () => {
+      const valid = { tabId: '1', url: 'https://example.com' };
+      expect(validateNavigationRequest(valid)).toEqual(valid);
+    });
+
+    it('rejects invalid or non-object payloads', () => {
+      expect(() =>
+        validateNavigationRequest(
+          null as unknown as Parameters<typeof validateNavigationRequest>[0],
+        ),
+      ).toThrow('Navigation request must be an object');
+      expect(() =>
+        validateNavigationRequest(
+          'invalid' as unknown as Parameters<typeof validateNavigationRequest>[0],
+        ),
+      ).toThrow('Navigation request must be an object');
+    });
+
+    it('rejects missing or empty tabId and url', () => {
+      expect(() => validateNavigationRequest({ tabId: '', url: 'https://example.com' })).toThrow(
+        'Navigation tabId must be a non-empty string',
+      );
+      expect(() => validateNavigationRequest({ tabId: '1', url: '' })).toThrow(
+        'Navigation URL must be a non-empty string',
+      );
+    });
+  });
+
   describe('createElectronAPI', () => {
     const createMockIpc = () => ({
       invoke: vi.fn().mockImplementation((channel: string) => {
@@ -39,10 +72,19 @@ describe('Preload Bridge & Validation', () => {
             return Promise.resolve('linux');
           case 'window:isMaximized':
             return Promise.resolve(false);
+          case 'navigation:getState':
+            return Promise.resolve({
+              tabId: '1',
+              isLoading: false,
+              url: 'https://example.com',
+              title: 'Example',
+            });
           default:
             return Promise.resolve(undefined);
         }
       }),
+      on: vi.fn(),
+      removeListener: vi.fn(),
     });
 
     it('creates a frozen API object and namespaces', () => {
@@ -54,6 +96,7 @@ describe('Preload Bridge & Validation', () => {
       expect(Object.isFrozen(api.platform)).toBe(true);
       expect(Object.isFrozen(api.shell)).toBe(true);
       expect(Object.isFrozen(api.window)).toBe(true);
+      expect(Object.isFrozen(api.navigation)).toBe(true);
     });
 
     it('does not expose internal ipcRenderer methods', () => {
@@ -114,6 +157,31 @@ describe('Preload Bridge & Validation', () => {
       expect(mockIpc.invoke).toHaveBeenCalledWith('window:close');
       expect(mockIpc.invoke).toHaveBeenCalledWith('window:isMaximized');
       expect(mockIpc.invoke).toHaveBeenCalledWith('window:getState');
+    });
+
+    it('dispatches navigation channels and manages state change listeners', async () => {
+      const mockIpc = createMockIpc();
+      const api = createElectronAPI(mockIpc);
+
+      await api.navigation.loadUrl({ tabId: '1', url: 'https://example.com' });
+      expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:loadUrl', {
+        tabId: '1',
+        url: 'https://example.com',
+      });
+
+      const state = await api.navigation.getState('1');
+      expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:getState', '1');
+      expect(state?.url).toBe('https://example.com');
+
+      const cb = vi.fn();
+      const unsubscribe = api.navigation.onStateChange(cb);
+
+      expect(mockIpc.on).toHaveBeenCalledWith('navigation:stateChange', expect.any(Function));
+      unsubscribe();
+      expect(mockIpc.removeListener).toHaveBeenCalledWith(
+        'navigation:stateChange',
+        expect.any(Function),
+      );
     });
   });
 });

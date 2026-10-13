@@ -107,6 +107,26 @@ export class BrowserApp {
   }
 
   private initEventListeners(): void {
+    if (this.ipcClient.isAvailable()) {
+      this.ipcClient.onNavigationStateChange((state) => {
+        const tabIdNum = Number(state.tabId);
+        const tab = this.tabManager.getTab(tabIdNum) || this.tabManager.getActiveTab();
+        if (tab) {
+          this.tabManager.updateTab(tab.id, {
+            url: state.url,
+            title: state.title,
+          });
+        }
+        this.addressBar.setUrl(state.url);
+        if (state.title) {
+          document.title = `${state.title} - Nous`;
+        }
+        if (this.refreshBtn) {
+          this.refreshBtn.classList.toggle('loading', state.isLoading);
+        }
+      });
+    }
+
     this.newTabBtn?.addEventListener('click', () => {
       this.tabManager.createTab();
     });
@@ -279,6 +299,12 @@ export class BrowserApp {
 
     this.tabManager.updateTab(activeTab.id, { url, title: url });
 
+    if (this.ipcClient.isAvailable()) {
+      this.ipcClient.loadUrl({ tabId: String(activeTab.id), url }).catch((err) => {
+        console.error('[Navigation] Failed to load URL via IPC:', err);
+      });
+    }
+
     const existingIframe = this.iframes.get(activeTab.id);
     if (existingIframe) {
       existingIframe.src = url;
@@ -295,6 +321,12 @@ export class BrowserApp {
   private reloadActiveTab(): void {
     const activeTab = this.tabManager.getActiveTab();
     if (!activeTab) return;
+
+    if (this.ipcClient.isAvailable() && activeTab.url) {
+      this.ipcClient.loadUrl({ tabId: String(activeTab.id), url: activeTab.url }).catch((err) => {
+        console.error('[Navigation] Failed to reload URL via IPC:', err);
+      });
+    }
 
     const iframe = this.iframes.get(activeTab.id);
     if (iframe) {

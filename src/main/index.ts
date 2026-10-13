@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'node:path';
 import * as url from 'node:url';
 import { BrowserWindowManager } from './window/index.js';
+import { NavigationController } from './navigation/index.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === 'development';
@@ -13,8 +14,14 @@ export const windowManager = new BrowserWindowManager({
   devServerUrl: 'http://localhost:5173',
 });
 
+export const navigationController = new NavigationController({
+  getWebContents: () => windowManager.getWindow()?.webContents ?? null,
+});
+
 export function createMainWindow(): BrowserWindow {
-  return windowManager.createWindow();
+  const window = windowManager.createWindow();
+  navigationController.attachWebContents(window.webContents);
+  return window;
 }
 
 app.on('window-all-closed', () => {
@@ -31,6 +38,7 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   windowManager.registerIpcHandlers();
+  navigationController.registerIpcHandlers();
   createMainWindow();
 
   app.on('second-instance', () => {
