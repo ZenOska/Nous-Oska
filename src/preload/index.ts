@@ -1,31 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { createElectronAPI } from './api.js';
+import type { ElectronAPI } from './types.js';
 
-const electronAPI = {
-  app: {
-    getVersion: () => ipcRenderer.invoke('app:getVersion'),
-    getName: () => ipcRenderer.invoke('app:getName'),
-  },
-  platform: {
-    get: () => ipcRenderer.invoke('platform:get'),
-  },
-  shell: {
-    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
-  },
-  window: {
-    minimize: () => ipcRenderer.invoke('window:minimize'),
-    maximize: () => ipcRenderer.invoke('window:maximize'),
-    unmaximize: () => ipcRenderer.invoke('window:unmaximize'),
-    toggleMaximize: () => ipcRenderer.invoke('window:toggleMaximize'),
-    close: () => ipcRenderer.invoke('window:close'),
-    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
-    getState: () => ipcRenderer.invoke('window:getState'),
-  },
-} as const;
+export * from './types.js';
+export * from './api.js';
 
-contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+export const electronAPI = createElectronAPI(ipcRenderer);
+
+try {
+  contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+} catch {
+  // Graceful fallback when executed in non-Electron test or script environments
+}
 
 declare global {
   interface Window {
-    electronAPI: typeof electronAPI;
+    electronAPI: ElectronAPI;
   }
 }
