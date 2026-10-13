@@ -5,6 +5,7 @@ export * from './ipc/index.js';
 export * from './security/index.js';
 export * from './tabs/index.js';
 export * from './window/index.js';
+export * from './address-bar/index.js';
 
 export function initializeRenderer(): BrowserApp | null {
   if (typeof document === 'undefined') {
