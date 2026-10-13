@@ -51,6 +51,11 @@ describe('WindowControls', () => {
         isMaximized: vi.fn().mockResolvedValue(true),
         getState: vi.fn().mockResolvedValue(null),
       },
+      navigation: {
+        loadUrl: vi.fn().mockResolvedValue(undefined),
+        getState: vi.fn().mockResolvedValue(null),
+        onStateChange: vi.fn().mockReturnValue(() => undefined),
+      },
     };
 
     const client = new RendererIpcClient(mockApi);

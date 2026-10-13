@@ -29,6 +29,16 @@ describe('RendererIpcClient', () => {
         bounds: { x: 0, y: 0, width: 1400, height: 900 },
       }),
     },
+    navigation: {
+      loadUrl: vi.fn().mockResolvedValue(undefined),
+      getState: vi.fn().mockResolvedValue({
+        tabId: '1',
+        isLoading: false,
+        url: 'https://example.com',
+        title: 'Example',
+      }),
+      onStateChange: vi.fn().mockReturnValue(() => undefined),
+    },
   });
 
   it('detects availability of electronAPI accurately', () => {
@@ -91,5 +101,24 @@ describe('RendererIpcClient', () => {
       'Disallowed protocol for external navigation',
     );
     await expect(client.openExternal('javascript:alert(1)')).rejects.toThrow();
+  });
+
+  it('delegates navigation operations across the bridge', async () => {
+    const mockApi = createMockApi();
+    const client = new RendererIpcClient(mockApi);
+
+    await client.loadUrl({ tabId: '1', url: 'https://example.com' });
+    expect(mockApi.navigation.loadUrl).toHaveBeenCalledWith({
+      tabId: '1',
+      url: 'https://example.com',
+    });
+
+    const state = await client.getNavigationState('1');
+    expect(mockApi.navigation.getState).toHaveBeenCalledWith('1');
+    expect(state?.url).toBe('https://example.com');
+
+    const cb = vi.fn();
+    client.onNavigationStateChange(cb);
+    expect(mockApi.navigation.onStateChange).toHaveBeenCalledWith(cb);
   });
 });

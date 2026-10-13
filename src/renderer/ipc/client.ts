@@ -1,4 +1,9 @@
-import type { ElectronAPI, WindowState } from '../globals.js';
+import type {
+  ElectronAPI,
+  NavigationRequest,
+  NavigationStateChange,
+  WindowState,
+} from '../globals.js';
 
 export class RendererIpcClient {
   constructor(
@@ -75,5 +80,20 @@ export class RendererIpcClient {
   public async getWindowState(): Promise<WindowState | null> {
     const api = this.ensureApi();
     return api.window.getState();
+  }
+
+  public async loadUrl(request: NavigationRequest): Promise<void> {
+    const api = this.ensureApi();
+    await api.navigation.loadUrl(request);
+  }
+
+  public async getNavigationState(tabId?: string): Promise<NavigationStateChange | null> {
+    const api = this.ensureApi();
+    return api.navigation.getState(tabId);
+  }
+
+  public onNavigationStateChange(callback: (state: NavigationStateChange) => void): () => void {
+    const api = this.ensureApi();
+    return api.navigation.onStateChange(callback);
   }
 }

@@ -322,6 +322,20 @@ body {
   color: var(--fg-primary);
 }
 
+.url-bar-action.loading svg {
+  animation: spin 1s linear infinite;
+  color: var(--accent);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .toolbar-btn {
   display: flex;
   align-items: center;
