@@ -28,3 +28,18 @@ export interface NetErrorDetails {
   title: string;
   failedUrl: string;
 }
+
+/**
+ * Payload sent to invoke history traversal action.
+ */
+export interface NavigationHistoryAction {
+  tabId: string;
+}
+
+/**
+ * Capability state for back/forward traversal.
+ */
+export interface NavigationCapabilities {
+  canGoBack: boolean;
+  canGoForward: boolean;
+}

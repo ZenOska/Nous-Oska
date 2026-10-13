@@ -9,6 +9,9 @@ class MockWebContents extends EventEmitter {
   public title = 'New Tab';
   public isDestroyedFlag = false;
 
+  public canGoBackFlag = false;
+  public canGoForwardFlag = false;
+
   public loadURL = vi.fn().mockImplementation((destUrl: string) => {
     this.url = destUrl;
     return Promise.resolve();
@@ -31,6 +34,12 @@ class MockWebContents extends EventEmitter {
   public destroy() {
     this.isDestroyedFlag = true;
   }
+
+  public canGoBack = vi.fn().mockImplementation(() => this.canGoBackFlag);
+  public canGoForward = vi.fn().mockImplementation(() => this.canGoForwardFlag);
+  public goBack = vi.fn().mockImplementation(() => {
+    this.canGoBackFlag = false;
+  });
 }
 
 describe('NavigationController', () => {
@@ -210,6 +219,8 @@ describe('NavigationController', () => {
     controller.registerIpcHandlers();
     expect(mockIpcHandlers.has('navigation:loadUrl')).toBe(true);
     expect(mockIpcHandlers.has('navigation:getState')).toBe(true);
+    expect(mockIpcHandlers.has('navigation:goBack')).toBe(true);
+    expect(mockIpcHandlers.has('navigation:getCapabilities')).toBe(true);
 
     const loadHandler = mockIpcHandlers.get('navigation:loadUrl');
     await loadHandler?.({}, { tabId: '1', url: 'https://example.com' });
@@ -219,9 +230,65 @@ describe('NavigationController', () => {
     const state = (await getHandler?.({}, '1')) as NavigationStateChange;
     expect(state.url).toBe('https://example.com/');
 
+    mockWebContents.canGoBackFlag = true;
+    const backHandler = mockIpcHandlers.get('navigation:goBack');
+    const backResult = await backHandler?.({}, { tabId: '1' });
+    expect(backResult).toBe(true);
+    expect(mockWebContents.goBack).toHaveBeenCalled();
+
+    const capsHandler = mockIpcHandlers.get('navigation:getCapabilities');
+    const capsResult = await capsHandler?.({}, '1');
+    expect(capsResult).toEqual({ canGoBack: false, canGoForward: false });
+
     controller.unregisterIpcHandlers();
     expect(mockIpcHandlers.has('navigation:loadUrl')).toBe(false);
     expect(mockIpcHandlers.has('navigation:getState')).toBe(false);
+    expect(mockIpcHandlers.has('navigation:goBack')).toBe(false);
+    expect(mockIpcHandlers.has('navigation:getCapabilities')).toBe(false);
+  });
+
+  it('broadcasts capability changes on did-navigate and did-navigate-in-page', () => {
+    const capsEvents: unknown[] = [];
+    const controller = new NavigationController({
+      getWebContents: () => mockWebContents as unknown as WebContents,
+      onCapabilitiesChange: (caps) => capsEvents.push(caps),
+      customIpcMain: customIpc,
+    });
+
+    controller.attachWebContents(mockWebContents as unknown as WebContents);
+
+    mockWebContents.canGoBackFlag = true;
+    mockWebContents.emit('did-navigate', {}, 'https://example.com/step1');
+
+    expect(capsEvents.length).toBe(1);
+    expect(capsEvents[0]).toEqual({ canGoBack: true, canGoForward: false });
+    expect(mockWebContents.send).toHaveBeenCalledWith('navigation:capabilities', {
+      canGoBack: true,
+      canGoForward: false,
+    });
+
+    // In-page anchor hash navigation
+    mockWebContents.emit('did-navigate-in-page', {}, 'https://example.com/step1#section');
+    expect(capsEvents.length).toBe(2);
+    expect(controller.getState().url).toBe('https://example.com/step1#section');
+  });
+
+  it('delegates goBack with tabId and dispatches capability updates', () => {
+    const capsEvents: unknown[] = [];
+    const controller = new NavigationController({
+      getWebContents: () => mockWebContents as unknown as WebContents,
+      onCapabilitiesChange: (caps) => capsEvents.push(caps),
+      customIpcMain: customIpc,
+    });
+
+    controller.attachWebContents(mockWebContents as unknown as WebContents);
+    mockWebContents.canGoBackFlag = true;
+
+    const result = controller.goBack({ tabId: 'tab-99' });
+    expect(result).toBe(true);
+    expect(mockWebContents.goBack).toHaveBeenCalledTimes(1);
+    expect(controller.getState().tabId).toBe('tab-99');
+    expect(capsEvents.length).toBe(1);
   });
 
   it('cleans up lifecycle listeners and IPC upon destroy', () => {
@@ -235,11 +302,16 @@ describe('NavigationController', () => {
 
     expect(mockWebContents.listenerCount('did-start-loading')).toBe(1);
     expect(mockWebContents.listenerCount('did-finish-load')).toBe(1);
+    expect(mockWebContents.listenerCount('did-navigate')).toBe(1);
+    expect(mockWebContents.listenerCount('did-navigate-in-page')).toBe(1);
 
     controller.destroy();
 
     expect(mockWebContents.listenerCount('did-start-loading')).toBe(0);
     expect(mockWebContents.listenerCount('did-finish-load')).toBe(0);
+    expect(mockWebContents.listenerCount('did-navigate')).toBe(0);
+    expect(mockWebContents.listenerCount('did-navigate-in-page')).toBe(0);
     expect(mockIpcHandlers.has('navigation:loadUrl')).toBe(false);
+    expect(mockIpcHandlers.has('navigation:goBack')).toBe(false);
   });
 });

@@ -25,6 +25,15 @@ export interface NavigationStateChange {
   errorDescription?: string;
 }
 
+export interface NavigationHistoryAction {
+  tabId: string;
+}
+
+export interface NavigationCapabilities {
+  canGoBack: boolean;
+  canGoForward: boolean;
+}
+
 export interface ElectronAPI {
   app: {
     getVersion: () => Promise<string>;
@@ -49,6 +58,9 @@ export interface ElectronAPI {
     loadUrl: (request: NavigationRequest) => Promise<void>;
     getState: (tabId?: string) => Promise<NavigationStateChange | null>;
     onStateChange: (callback: (state: NavigationStateChange) => void) => () => void;
+    goBack: (action?: NavigationHistoryAction) => Promise<boolean>;
+    getCapabilities: (tabId?: string) => Promise<NavigationCapabilities>;
+    onCapabilitiesChange: (callback: (capabilities: NavigationCapabilities) => void) => () => void;
   };
 }
 

@@ -1,5 +1,6 @@
 import { AddressBar } from './address-bar/index.js';
 import { RendererIpcClient } from './ipc/index.js';
+import { HistoryController } from './navigation/index.js';
 import { auditRendererContext, sanitizeNavigationUrl } from './security/index.js';
 import { TabManager } from './tabs/index.js';
 import type { Tab } from './tabs/types.js';
@@ -10,11 +11,13 @@ export class BrowserApp {
   public readonly tabManager: TabManager;
   public readonly windowControls: WindowControls;
   public readonly addressBar: AddressBar;
+  public readonly historyController: HistoryController;
 
   private readonly iframes: Map<number, HTMLIFrameElement> = new Map();
 
   private readonly tabBar = document.getElementById('tab-bar');
   private readonly newTabBtn = document.getElementById('new-tab-btn');
+  private readonly backBtn = document.getElementById('back-btn');
   private readonly urlBar = document.getElementById('url-bar') as HTMLElement | null;
   private readonly refreshBtn = document.getElementById('refresh-btn');
   private readonly closeBtn = document.getElementById('close-btn');
@@ -51,6 +54,28 @@ export class BrowserApp {
           securityBadge,
         },
       });
+
+    this.historyController = new HistoryController({
+      backBtn: this.backBtn,
+      ipcClient: this.ipcClient,
+      getTabId: () => {
+        const activeTab = this.tabManager.getActiveTab();
+        return activeTab ? String(activeTab.id) : undefined;
+      },
+      onGoBack: () => {
+        const activeTab = this.tabManager.getActiveTab();
+        if (activeTab) {
+          const iframe = this.iframes.get(activeTab.id);
+          if (iframe) {
+            try {
+              iframe.contentWindow?.history.back();
+            } catch {
+              // ignore cross-origin fallback errors
+            }
+          }
+        }
+      },
+    });
 
     this.runSecurityCheck();
     this.windowControls.init();
@@ -254,6 +279,17 @@ export class BrowserApp {
 
     this.addressBar.setUrl(activeTab.url);
     this.updateWindowTitle();
+
+    if (this.ipcClient.isAvailable()) {
+      this.ipcClient
+        .getNavigationCapabilities(String(activeTab.id))
+        .then((caps) => {
+          this.historyController.setCapabilities(caps);
+        })
+        .catch(() => {
+          // ignore capability fetch error during tab synchronization
+        });
+    }
   }
 
   private mountTabIframe(tab: Tab): void {
