@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   HistoryController,
   MOUSE_BACK_BUTTON,
+  MOUSE_FORWARD_BUTTON,
 } from '../../src/renderer/navigation/history-controller.js';
 import type { RendererIpcClient } from '../../src/renderer/ipc/client.js';
 
@@ -64,6 +65,7 @@ describe('HistoryController', () => {
     return {
       isAvailable: vi.fn().mockReturnValue(true),
       goBack: vi.fn().mockResolvedValue(true),
+      goForward: vi.fn().mockResolvedValue(true),
       getNavigationCapabilities: vi
         .fn()
         .mockResolvedValue({ canGoBack: false, canGoForward: false }),
@@ -319,22 +321,172 @@ describe('HistoryController', () => {
   });
 
   it('cleans up event listeners and IPC subscriptions upon destroy', () => {
-    const mockBtn = createMockButton();
+    const mockBackBtn = createMockButton();
+    const mockForwardBtn = createMockButton();
     const mockIpc = createMockIpcClient();
 
     const controller = new HistoryController({
-      backBtn: mockBtn as unknown as HTMLElement,
+      backBtn: mockBackBtn as unknown as HTMLElement,
+      forwardBtn: mockForwardBtn as unknown as HTMLElement,
       ipcClient: mockIpc,
     });
 
-    expect(mockBtn.listeners['click']?.length).toBe(1);
+    expect(mockBackBtn.listeners['click']?.length).toBe(1);
+    expect(mockForwardBtn.listeners['click']?.length).toBe(1);
     expect(documentListeners['keydown']?.length).toBe(1);
     expect(windowListeners['mouseup']?.length).toBe(1);
 
     controller.destroy();
 
-    expect(mockBtn.listeners['click']?.length).toBe(0);
+    expect(mockBackBtn.listeners['click']?.length).toBe(0);
+    expect(mockForwardBtn.listeners['click']?.length).toBe(0);
     expect(documentListeners['keydown']?.length).toBe(0);
     expect(windowListeners['mouseup']?.length).toBe(0);
+  });
+
+  describe('Forward Navigation', () => {
+    it('initializes forward button as disabled and reflects initial capabilities', () => {
+      const mockForwardBtn = createMockButton();
+      const controller = new HistoryController({
+        forwardBtn: mockForwardBtn as unknown as HTMLElement,
+      });
+
+      expect(controller.getCanGoForward()).toBe(false);
+      expect(mockForwardBtn.disabled).toBe(true);
+      expect(mockForwardBtn.attributes['disabled']).toBe('true');
+      expect(mockForwardBtn.attributes['aria-disabled']).toBe('true');
+      expect(mockForwardBtn.classList.contains('disabled')).toBe(true);
+    });
+
+    it('enables forward button dynamically when canGoForward becomes true', () => {
+      const mockForwardBtn = createMockButton();
+      const controller = new HistoryController({
+        forwardBtn: mockForwardBtn as unknown as HTMLElement,
+      });
+
+      controller.setCapabilities({ canGoBack: true, canGoForward: true });
+      expect(controller.getCanGoForward()).toBe(true);
+      expect(mockForwardBtn.disabled).toBe(false);
+      expect(mockForwardBtn.attributes['disabled']).toBeUndefined();
+      expect(mockForwardBtn.attributes['aria-disabled']).toBe('false');
+      expect(mockForwardBtn.classList.contains('disabled')).toBe(false);
+
+      // Disable again when session branches or advances to head
+      controller.setCapabilities({ canGoBack: true, canGoForward: false });
+      expect(controller.getCanGoForward()).toBe(false);
+      expect(mockForwardBtn.disabled).toBe(true);
+      expect(mockForwardBtn.attributes['disabled']).toBe('true');
+    });
+
+    it('suppresses triggerForward when canGoForward is false', async () => {
+      const mockIpc = createMockIpcClient();
+      const onForward = vi.fn();
+      const controller = new HistoryController({
+        ipcClient: mockIpc,
+        onGoForward: onForward,
+      });
+
+      const executed = await controller.triggerForward();
+      expect(executed).toBe(false);
+      expect(onForward).not.toHaveBeenCalled();
+      expect(mockIpc.goForward).not.toHaveBeenCalled();
+    });
+
+    it('executes triggerForward on forward button click and dispatches IPC with tabId', async () => {
+      const mockForwardBtn = createMockButton();
+      const mockIpc = createMockIpcClient();
+      const onForward = vi.fn();
+
+      const controller = new HistoryController({
+        forwardBtn: mockForwardBtn as unknown as HTMLElement,
+        ipcClient: mockIpc,
+        onGoForward: onForward,
+        getTabId: () => 'tab-77',
+      });
+
+      controller.setCapabilities({ canGoBack: true, canGoForward: true });
+
+      mockForwardBtn.click();
+      await vi.waitFor(() => {
+        expect(mockIpc.goForward).toHaveBeenCalledWith({ tabId: 'tab-77' });
+      });
+
+      expect(onForward).toHaveBeenCalledTimes(1);
+    });
+
+    it('intercepts Alt+ArrowRight and Cmd/Ctrl+] keyboard shortcuts', () => {
+      const mockForwardBtn = createMockButton();
+      const mockIpc = createMockIpcClient();
+
+      const controller = new HistoryController({
+        forwardBtn: mockForwardBtn as unknown as HTMLElement,
+        ipcClient: mockIpc,
+      });
+
+      controller.setCapabilities({ canGoBack: true, canGoForward: true });
+
+      // Windows/Linux Alt+Right
+      const altRightEvent = {
+        altKey: true,
+        key: 'ArrowRight',
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent;
+      const handledAltRight = controller.handleKeyboardShortcut(altRightEvent);
+      expect(handledAltRight).toBe(true);
+      expect(altRightEvent.preventDefault).toHaveBeenCalled();
+
+      // macOS Cmd+]
+      const cmdBracketEvent = {
+        metaKey: true,
+        key: ']',
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent;
+      const handledCmd = controller.handleKeyboardShortcut(cmdBracketEvent);
+      expect(handledCmd).toBe(true);
+      expect(cmdBracketEvent.preventDefault).toHaveBeenCalled();
+
+      // Ctrl+]
+      const ctrlBracketEvent = {
+        ctrlKey: true,
+        key: ']',
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent;
+      const handledCtrl = controller.handleKeyboardShortcut(ctrlBracketEvent);
+      expect(handledCtrl).toBe(true);
+      expect(ctrlBracketEvent.preventDefault).toHaveBeenCalled();
+
+      // Unrelated key
+      const plainRightEvent = {
+        altKey: false,
+        key: 'ArrowRight',
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent;
+      const handledPlain = controller.handleKeyboardShortcut(plainRightEvent);
+      expect(handledPlain).toBe(false);
+      expect(plainRightEvent.preventDefault).not.toHaveBeenCalled();
+
+      expect(mockIpc.goForward).toHaveBeenCalledTimes(3);
+    });
+
+    it('intercepts mouse forward button (button 4) mouseup events', () => {
+      const mockForwardBtn = createMockButton();
+      const mockIpc = createMockIpcClient();
+
+      const controller = new HistoryController({
+        forwardBtn: mockForwardBtn as unknown as HTMLElement,
+        ipcClient: mockIpc,
+      });
+
+      controller.setCapabilities({ canGoBack: true, canGoForward: true });
+
+      const mouseForwardEvent = {
+        button: MOUSE_FORWARD_BUTTON,
+        preventDefault: vi.fn(),
+      };
+
+      windowListeners['mouseup']?.forEach((cb) => cb(mouseForwardEvent));
+      expect(mouseForwardEvent.preventDefault).toHaveBeenCalled();
+      expect(mockIpc.goForward).toHaveBeenCalledTimes(1);
+    });
   });
 });

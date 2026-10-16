@@ -56,6 +56,7 @@ describe('WindowControls', () => {
         getState: vi.fn().mockResolvedValue(null),
         onStateChange: vi.fn().mockReturnValue(() => undefined),
         goBack: vi.fn().mockResolvedValue(false),
+        goForward: vi.fn().mockResolvedValue(false),
         getCapabilities: vi.fn().mockResolvedValue({ canGoBack: false, canGoForward: false }),
         onCapabilitiesChange: vi.fn().mockReturnValue(() => undefined),
       },

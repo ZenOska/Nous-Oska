@@ -59,6 +59,7 @@ export interface ElectronAPI {
     getState: (tabId?: string) => Promise<NavigationStateChange | null>;
     onStateChange: (callback: (state: NavigationStateChange) => void) => () => void;
     goBack: (action?: NavigationHistoryAction) => Promise<boolean>;
+    goForward: (action?: NavigationHistoryAction) => Promise<boolean>;
     getCapabilities: (tabId?: string) => Promise<NavigationCapabilities>;
     onCapabilitiesChange: (callback: (capabilities: NavigationCapabilities) => void) => () => void;
   };

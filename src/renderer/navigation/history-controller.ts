@@ -2,34 +2,43 @@ import type { NavigationCapabilities } from '../globals.js';
 import type { RendererIpcClient } from '../ipc/index.js';
 
 export const MOUSE_BACK_BUTTON = 3;
+export const MOUSE_FORWARD_BUTTON = 4;
 
 export interface HistoryControllerOptions {
   backBtn?: HTMLElement | null;
+  forwardBtn?: HTMLElement | null;
   ipcClient?: RendererIpcClient;
   onGoBack?: () => void;
+  onGoForward?: () => void;
   getTabId?: () => string | undefined;
 }
 
 /**
- * Manages the toolbar Back navigation button, keyboard shortcuts,
+ * Manages the toolbar Back & Forward navigation buttons, keyboard shortcuts,
  * and capability synchronization for the active browsing session.
  */
 export class HistoryController {
   private readonly backBtn: HTMLElement | null;
+  private readonly forwardBtn: HTMLElement | null;
   private readonly ipcClient?: RendererIpcClient;
   private readonly onGoBackCallback?: () => void;
+  private readonly onGoForwardCallback?: () => void;
   private readonly getTabIdCallback?: () => string | undefined;
 
   private canGoBack = false;
+  private canGoForward = false;
   private unsubscribeCapabilities?: () => void;
-  private boundClickHandler?: () => void;
+  private boundBackClickHandler?: () => void;
+  private boundForwardClickHandler?: () => void;
   private boundKeyDownHandler?: (e: KeyboardEvent) => void;
   private boundMouseUpHandler?: (e: MouseEvent) => void;
 
   constructor(options: HistoryControllerOptions = {}) {
     this.backBtn = options.backBtn ?? null;
+    this.forwardBtn = options.forwardBtn ?? null;
     this.ipcClient = options.ipcClient;
     this.onGoBackCallback = options.onGoBack;
+    this.onGoForwardCallback = options.onGoForward;
     this.getTabIdCallback = options.getTabId;
 
     this.init();
@@ -42,10 +51,17 @@ export class HistoryController {
     this.updateUI();
 
     if (this.backBtn) {
-      this.boundClickHandler = () => {
+      this.boundBackClickHandler = () => {
         void this.triggerBack();
       };
-      this.backBtn.addEventListener('click', this.boundClickHandler);
+      this.backBtn.addEventListener('click', this.boundBackClickHandler);
+    }
+
+    if (this.forwardBtn) {
+      this.boundForwardClickHandler = () => {
+        void this.triggerForward();
+      };
+      this.forwardBtn.addEventListener('click', this.boundForwardClickHandler);
     }
 
     if (typeof document !== 'undefined') {
@@ -60,6 +76,9 @@ export class HistoryController {
         if (e.button === MOUSE_BACK_BUTTON) {
           e.preventDefault();
           void this.triggerBack();
+        } else if (e.button === MOUSE_FORWARD_BUTTON) {
+          e.preventDefault();
+          void this.triggerForward();
         }
       };
       window.addEventListener('mouseup', this.boundMouseUpHandler);
@@ -83,12 +102,13 @@ export class HistoryController {
   }
 
   /**
-   * Sets current navigation capabilities and updates visual button state.
+   * Sets current navigation capabilities and updates visual button states.
    *
    * @param capabilities Capability state snapshot.
    */
   public setCapabilities(capabilities: NavigationCapabilities): void {
     this.canGoBack = Boolean(capabilities.canGoBack);
+    this.canGoForward = Boolean(capabilities.canGoForward);
     this.updateUI();
   }
 
@@ -97,6 +117,13 @@ export class HistoryController {
    */
   public getCanGoBack(): boolean {
     return this.canGoBack;
+  }
+
+  /**
+   * Returns current canGoForward state.
+   */
+  public getCanGoForward(): boolean {
+    return this.canGoForward;
   }
 
   /**
@@ -124,18 +151,51 @@ export class HistoryController {
   }
 
   /**
-   * Evaluates keyboard shortcut events for back navigation invocation.
-   * Supports Alt+Left Arrow (Windows/Linux) and Cmd+[ (macOS).
+   * Executes forward navigation if succeeding history entries exist.
+   *
+   * @returns Promise resolving to boolean indicating whether forward navigation occurred.
+   */
+  public async triggerForward(): Promise<boolean> {
+    if (!this.canGoForward) {
+      return false;
+    }
+
+    this.onGoForwardCallback?.();
+
+    if (this.ipcClient?.isAvailable()) {
+      try {
+        const tabId = this.getTabIdCallback?.();
+        await this.ipcClient.goForward(tabId ? { tabId } : undefined);
+      } catch (error) {
+        console.error('[HistoryController] Failed to dispatch goForward across IPC:', error);
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Evaluates keyboard shortcut events for history traversal invocation.
+   * Supports Alt+Left / Cmd+[ for Back, and Alt+Right / Cmd+] for Forward.
    *
    * @param e Keyboard event.
    */
   public handleKeyboardShortcut(e: KeyboardEvent): boolean {
     const isAltLeft = e.altKey && e.key === 'ArrowLeft';
-    const isCmdBracket = (e.metaKey || e.ctrlKey) && e.key === '[';
+    const isCmdBack = (e.metaKey || e.ctrlKey) && e.key === '[';
 
-    if (isAltLeft || isCmdBracket) {
+    const isAltRight = e.altKey && e.key === 'ArrowRight';
+    const isCmdForward = (e.metaKey || e.ctrlKey) && e.key === ']';
+
+    if (isAltLeft || isCmdBack) {
       e.preventDefault();
       void this.triggerBack();
+      return true;
+    }
+
+    if (isAltRight || isCmdForward) {
+      e.preventDefault();
+      void this.triggerForward();
       return true;
     }
 
@@ -143,34 +203,46 @@ export class HistoryController {
   }
 
   /**
-   * Synchronizes DOM attributes and styles for the Back button in O(1) time.
+   * Synchronizes DOM attributes and styles for button elements in O(1) time.
    */
-  private updateUI(): void {
-    if (!this.backBtn) {
+  private updateButtonState(btn: HTMLElement | null, enabled: boolean): void {
+    if (!btn) {
       return;
     }
 
-    if ('disabled' in this.backBtn) {
-      (this.backBtn as HTMLButtonElement).disabled = !this.canGoBack;
+    if ('disabled' in btn) {
+      (btn as HTMLButtonElement).disabled = !enabled;
     }
 
-    if (this.canGoBack) {
-      this.backBtn.removeAttribute('disabled');
-      this.backBtn.classList.remove('disabled');
-      this.backBtn.setAttribute('aria-disabled', 'false');
+    if (enabled) {
+      btn.removeAttribute('disabled');
+      btn.classList.remove('disabled');
+      btn.setAttribute('aria-disabled', 'false');
     } else {
-      this.backBtn.setAttribute('disabled', 'true');
-      this.backBtn.classList.add('disabled');
-      this.backBtn.setAttribute('aria-disabled', 'true');
+      btn.setAttribute('disabled', 'true');
+      btn.classList.add('disabled');
+      btn.setAttribute('aria-disabled', 'true');
     }
+  }
+
+  /**
+   * Synchronizes visual states for both Back and Forward buttons.
+   */
+  private updateUI(): void {
+    this.updateButtonState(this.backBtn, this.canGoBack);
+    this.updateButtonState(this.forwardBtn, this.canGoForward);
   }
 
   /**
    * Cleans up all attached event listeners and IPC subscriptions.
    */
   public destroy(): void {
-    if (this.backBtn && this.boundClickHandler) {
-      this.backBtn.removeEventListener('click', this.boundClickHandler);
+    if (this.backBtn && this.boundBackClickHandler) {
+      this.backBtn.removeEventListener('click', this.boundBackClickHandler);
+    }
+
+    if (this.forwardBtn && this.boundForwardClickHandler) {
+      this.forwardBtn.removeEventListener('click', this.boundForwardClickHandler);
     }
 
     if (this.boundKeyDownHandler && typeof document !== 'undefined') {
