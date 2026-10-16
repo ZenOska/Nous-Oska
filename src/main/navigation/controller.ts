@@ -266,6 +266,35 @@ export class NavigationController {
   }
 
   /**
+   * Navigates forward in the session history stack for the active WebContents.
+   *
+   * @param action Optional history action payload.
+   * @returns Boolean indicating whether navigation was performed.
+   */
+  public goForward(action?: NavigationHistoryAction): boolean {
+    let webContents = this.activeWebContents;
+    if (!webContents || webContents.isDestroyed()) {
+      webContents = this.getWebContents();
+      if (webContents && !webContents.isDestroyed()) {
+        this.attachWebContents(webContents);
+      }
+    }
+
+    if (!webContents || webContents.isDestroyed()) {
+      return false;
+    }
+
+    const executed = this.historyTracker.goForward(webContents);
+    if (executed) {
+      if (action?.tabId) {
+        this.currentState.tabId = action.tabId;
+      }
+      this.emitCapabilities();
+    }
+    return executed;
+  }
+
+  /**
    * Queries the current navigation capabilities for the active WebContents.
    *
    * @param tabId Optional tab identifier.
@@ -319,6 +348,11 @@ export class NavigationController {
       return this.goBack(action);
     });
 
+    this.ipc.handle('navigation:goForward', async (_event, ...args: unknown[]) => {
+      const action = args[0] as NavigationHistoryAction | undefined;
+      return this.goForward(action);
+    });
+
     this.ipc.handle('navigation:getCapabilities', async (_event, ...args: unknown[]) => {
       const tabId = typeof args[0] === 'string' ? args[0] : undefined;
       return this.getCapabilities(tabId);
@@ -338,6 +372,7 @@ export class NavigationController {
     this.ipc.removeHandler('navigation:loadUrl');
     this.ipc.removeHandler('navigation:getState');
     this.ipc.removeHandler('navigation:goBack');
+    this.ipc.removeHandler('navigation:goForward');
     this.ipc.removeHandler('navigation:getCapabilities');
 
     this.isIpcRegistered = false;

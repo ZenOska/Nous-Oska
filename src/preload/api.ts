@@ -85,6 +85,8 @@ export function createElectronAPI(ipc: IpcBridge): ElectronAPI {
       },
       goBack: (action?: NavigationHistoryAction) =>
         ipc.invoke('navigation:goBack', action) as Promise<boolean>,
+      goForward: (action?: NavigationHistoryAction) =>
+        ipc.invoke('navigation:goForward', action) as Promise<boolean>,
       getCapabilities: (tabId?: string) =>
         ipc.invoke('navigation:getCapabilities', tabId) as Promise<NavigationCapabilities>,
       onCapabilitiesChange: (callback: (capabilities: NavigationCapabilities) => void) => {

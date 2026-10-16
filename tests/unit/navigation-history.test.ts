@@ -138,4 +138,47 @@ describe('NavigationHistoryTracker', () => {
       expect(mockWebContents.goBack).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('goForward', () => {
+    it('enforces stack integrity and prevents forward traversal when canGoForward is false', () => {
+      const tracker = new NavigationHistoryTracker();
+      const mockWebContents = createMockWebContents({
+        canGoForward: vi.fn().mockReturnValue(false),
+        goForward: vi.fn(),
+      });
+
+      const executed = tracker.goForward(mockWebContents);
+      expect(executed).toBe(false);
+      expect(mockWebContents.goForward).not.toHaveBeenCalled();
+    });
+
+    it('returns false and does not throw when webContents is null', () => {
+      const tracker = new NavigationHistoryTracker();
+      expect(tracker.goForward(null)).toBe(false);
+    });
+
+    it('returns false when webContents is destroyed', () => {
+      const tracker = new NavigationHistoryTracker();
+      const mockWebContents = createMockWebContents({
+        isDestroyed: vi.fn().mockReturnValue(true),
+        canGoForward: vi.fn().mockReturnValue(true),
+        goForward: vi.fn(),
+      });
+
+      expect(tracker.goForward(mockWebContents)).toBe(false);
+      expect(mockWebContents.goForward).not.toHaveBeenCalled();
+    });
+
+    it('executes webContents.goForward() when succeeding entries exist', () => {
+      const tracker = new NavigationHistoryTracker();
+      const mockWebContents = createMockWebContents({
+        canGoForward: vi.fn().mockReturnValue(true),
+        goForward: vi.fn(),
+      });
+
+      const executed = tracker.goForward(mockWebContents);
+      expect(executed).toBe(true);
+      expect(mockWebContents.goForward).toHaveBeenCalledTimes(1);
+    });
+  });
 });

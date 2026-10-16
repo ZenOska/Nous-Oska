@@ -37,6 +37,11 @@ export interface NavigationHistoryAction {
 }
 
 /**
+ * Payload sent to invoke forward navigation action.
+ */
+export type NavigationForwardAction = NavigationHistoryAction;
+
+/**
  * Capability state for back/forward traversal.
  */
 export interface NavigationCapabilities {

@@ -39,6 +39,7 @@ describe('RendererIpcClient', () => {
       }),
       onStateChange: vi.fn().mockReturnValue(() => undefined),
       goBack: vi.fn().mockResolvedValue(true),
+      goForward: vi.fn().mockResolvedValue(true),
       getCapabilities: vi.fn().mockResolvedValue({ canGoBack: true, canGoForward: false }),
       onCapabilitiesChange: vi.fn().mockReturnValue(() => undefined),
     },
@@ -127,6 +128,14 @@ describe('RendererIpcClient', () => {
     const backResult = await client.goBack('1');
     expect(mockApi.navigation.goBack).toHaveBeenCalledWith({ tabId: '1' });
     expect(backResult).toBe(true);
+
+    const forwardResult = await client.goForward('1');
+    expect(mockApi.navigation.goForward).toHaveBeenCalledWith({ tabId: '1' });
+    expect(forwardResult).toBe(true);
+
+    const forwardPayloadResult = await client.goForward({ tabId: '2' });
+    expect(mockApi.navigation.goForward).toHaveBeenCalledWith({ tabId: '2' });
+    expect(forwardPayloadResult).toBe(true);
 
     const caps = await client.getNavigationCapabilities('1');
     expect(mockApi.navigation.getCapabilities).toHaveBeenCalledWith('1');

@@ -18,6 +18,7 @@ export class BrowserApp {
   private readonly tabBar = document.getElementById('tab-bar');
   private readonly newTabBtn = document.getElementById('new-tab-btn');
   private readonly backBtn = document.getElementById('back-btn');
+  private readonly forwardBtn = document.getElementById('forward-btn');
   private readonly urlBar = document.getElementById('url-bar') as HTMLElement | null;
   private readonly refreshBtn = document.getElementById('refresh-btn');
   private readonly closeBtn = document.getElementById('close-btn');
@@ -57,6 +58,7 @@ export class BrowserApp {
 
     this.historyController = new HistoryController({
       backBtn: this.backBtn,
+      forwardBtn: this.forwardBtn,
       ipcClient: this.ipcClient,
       getTabId: () => {
         const activeTab = this.tabManager.getActiveTab();
@@ -69,6 +71,19 @@ export class BrowserApp {
           if (iframe) {
             try {
               iframe.contentWindow?.history.back();
+            } catch {
+              // ignore cross-origin fallback errors
+            }
+          }
+        }
+      },
+      onGoForward: () => {
+        const activeTab = this.tabManager.getActiveTab();
+        if (activeTab) {
+          const iframe = this.iframes.get(activeTab.id);
+          if (iframe) {
+            try {
+              iframe.contentWindow?.history.forward();
             } catch {
               // ignore cross-origin fallback errors
             }

@@ -67,4 +67,24 @@ export class NavigationHistoryTracker {
     webContents.goBack();
     return true;
   }
+
+  /**
+   * Navigates forward in the session history stack if succeeding entries exist.
+   * Enforces stack integrity by preventing illegal forward traversal when canGoForward is false.
+   *
+   * @param webContents Target WebContents reference.
+   * @returns Boolean indicating whether the forward traversal was executed.
+   */
+  public goForward(webContents: WebContents | null): boolean {
+    if (
+      !this.canGoForward(webContents) ||
+      !webContents ||
+      typeof webContents.goForward !== 'function'
+    ) {
+      return false;
+    }
+
+    webContents.goForward();
+    return true;
+  }
 }

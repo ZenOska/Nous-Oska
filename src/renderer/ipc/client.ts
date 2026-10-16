@@ -106,6 +106,13 @@ export class RendererIpcClient {
     return api.navigation.goBack(payload);
   }
 
+  public async goForward(action?: NavigationHistoryAction | string): Promise<boolean> {
+    const api = this.ensureApi();
+    const payload: NavigationHistoryAction | undefined =
+      typeof action === 'string' ? { tabId: action } : action;
+    return api.navigation.goForward(payload);
+  }
+
   public async getNavigationCapabilities(tabId?: string): Promise<NavigationCapabilities> {
     const api = this.ensureApi();
     return api.navigation.getCapabilities(tabId);

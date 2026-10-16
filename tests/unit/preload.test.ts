@@ -81,6 +81,8 @@ describe('Preload Bridge & Validation', () => {
             });
           case 'navigation:goBack':
             return Promise.resolve(true);
+          case 'navigation:goForward':
+            return Promise.resolve(true);
           case 'navigation:getCapabilities':
             return Promise.resolve({ canGoBack: true, canGoForward: false });
           default:
@@ -190,6 +192,10 @@ describe('Preload Bridge & Validation', () => {
       const goBackResult = await api.navigation.goBack({ tabId: '1' });
       expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:goBack', { tabId: '1' });
       expect(goBackResult).toBe(true);
+
+      const goForwardResult = await api.navigation.goForward({ tabId: '1' });
+      expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:goForward', { tabId: '1' });
+      expect(goForwardResult).toBe(true);
 
       const caps = await api.navigation.getCapabilities('1');
       expect(mockIpc.invoke).toHaveBeenCalledWith('navigation:getCapabilities', '1');

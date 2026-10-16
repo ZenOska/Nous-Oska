@@ -40,6 +40,9 @@ class MockWebContents extends EventEmitter {
   public goBack = vi.fn().mockImplementation(() => {
     this.canGoBackFlag = false;
   });
+  public goForward = vi.fn().mockImplementation(() => {
+    this.canGoForwardFlag = false;
+  });
 }
 
 describe('NavigationController', () => {
@@ -236,6 +239,12 @@ describe('NavigationController', () => {
     expect(backResult).toBe(true);
     expect(mockWebContents.goBack).toHaveBeenCalled();
 
+    mockWebContents.canGoForwardFlag = true;
+    const forwardHandler = mockIpcHandlers.get('navigation:goForward');
+    const forwardResult = await forwardHandler?.({}, { tabId: '1' });
+    expect(forwardResult).toBe(true);
+    expect(mockWebContents.goForward).toHaveBeenCalled();
+
     const capsHandler = mockIpcHandlers.get('navigation:getCapabilities');
     const capsResult = await capsHandler?.({}, '1');
     expect(capsResult).toEqual({ canGoBack: false, canGoForward: false });
@@ -244,6 +253,7 @@ describe('NavigationController', () => {
     expect(mockIpcHandlers.has('navigation:loadUrl')).toBe(false);
     expect(mockIpcHandlers.has('navigation:getState')).toBe(false);
     expect(mockIpcHandlers.has('navigation:goBack')).toBe(false);
+    expect(mockIpcHandlers.has('navigation:goForward')).toBe(false);
     expect(mockIpcHandlers.has('navigation:getCapabilities')).toBe(false);
   });
 
@@ -291,6 +301,55 @@ describe('NavigationController', () => {
     expect(capsEvents.length).toBe(1);
   });
 
+  it('delegates goForward with tabId and dispatches capability updates', () => {
+    const capsEvents: unknown[] = [];
+    const controller = new NavigationController({
+      getWebContents: () => mockWebContents as unknown as WebContents,
+      onCapabilitiesChange: (caps) => capsEvents.push(caps),
+      customIpcMain: customIpc,
+    });
+
+    controller.attachWebContents(mockWebContents as unknown as WebContents);
+    mockWebContents.canGoForwardFlag = true;
+
+    const result = controller.goForward({ tabId: 'tab-88' });
+    expect(result).toBe(true);
+    expect(mockWebContents.goForward).toHaveBeenCalledTimes(1);
+    expect(controller.getState().tabId).toBe('tab-88');
+    expect(capsEvents.length).toBe(1);
+  });
+
+  it('enforces stack branching: clears forward capability and dispatches update on new URL navigation', async () => {
+    const capsEvents: unknown[] = [];
+    const controller = new NavigationController({
+      getWebContents: () => mockWebContents as unknown as WebContents,
+      onCapabilitiesChange: (caps) => capsEvents.push(caps),
+      customIpcMain: customIpc,
+    });
+
+    controller.attachWebContents(mockWebContents as unknown as WebContents);
+
+    // Initial state after traversing backward: canGoForward is true
+    mockWebContents.canGoBackFlag = true;
+    mockWebContents.canGoForwardFlag = true;
+    mockWebContents.emit('did-navigate', {}, 'https://example.com/step1');
+    expect(capsEvents[capsEvents.length - 1]).toEqual({ canGoBack: true, canGoForward: true });
+
+    // When navigating to a new destination, Chromium branches the stack and clears forward history
+    mockWebContents.loadURL.mockImplementationOnce(() => {
+      mockWebContents.canGoForwardFlag = false;
+      return Promise.resolve();
+    });
+
+    await controller.loadUrl({ tabId: '1', url: 'https://new-branch.org' });
+
+    expect(capsEvents[capsEvents.length - 1]).toEqual({ canGoBack: true, canGoForward: false });
+    expect(mockWebContents.send).toHaveBeenCalledWith('navigation:capabilities', {
+      canGoBack: true,
+      canGoForward: false,
+    });
+  });
+
   it('cleans up lifecycle listeners and IPC upon destroy', () => {
     const controller = new NavigationController({
       getWebContents: () => mockWebContents as unknown as WebContents,
@@ -313,5 +372,6 @@ describe('NavigationController', () => {
     expect(mockWebContents.listenerCount('did-navigate-in-page')).toBe(0);
     expect(mockIpcHandlers.has('navigation:loadUrl')).toBe(false);
     expect(mockIpcHandlers.has('navigation:goBack')).toBe(false);
+    expect(mockIpcHandlers.has('navigation:goForward')).toBe(false);
   });
 });
